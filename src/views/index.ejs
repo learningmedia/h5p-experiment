@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title><%- title %></title>
+</head>
+<body>
+  <form action="/" method="POST" encType="multipart/form-data">
+    <input name="h5p" type="file" value="H5P-File">
+    <input type="submit" value="Abschicken">
+  </form>
+  <% if (message) { %>
+  <div>
+    <%- message %>
+  </div>
+  <% } %>
+  <% if (contentId) { %>
+  <div>
+    Play with it <a href="/play/<%- contentId %>">here</a>!
+  </div>
+  <% } %>
+</body>
+</html>

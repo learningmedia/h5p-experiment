@@ -1,0 +1,17 @@
+{
+  "scripts": {
+    "start": "nodemon \"src/**/*.js\" -x \"node ./src/index.js\" --ignore \"temp/**\" --ignore \"h5p/**\""
+  },
+  "dependencies": {
+    "decompress": "~4.2.0",
+    "ejs": "~2.6.1",
+    "express": "~4.16.3",
+    "express-fileupload": "~0.4.0",
+    "glob": "~7.1.2",
+    "shelljs": "~0.8.2",
+    "shortid": "~2.2.8"
+  },
+  "devDependencies": {
+    "nodemon": "~1.17.4"
+  }
+}
