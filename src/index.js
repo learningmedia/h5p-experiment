@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const express = require('express');
+const htmlescape = require('htmlescape');
 const decompress = require('decompress');
 const h5pHelper = require('./h5p-helper');
 const fileUpload = require('express-fileupload');
@@ -9,6 +10,7 @@ const app = express();
 
 app.set('views', `${__dirname}/views`);
 app.set('view engine', 'ejs');
+app.locals.htmlescape = htmlescape;
 
 app.use('/h5p', express.static(path.join(__dirname, '../h5p')));
 app.use('/h5p-library', express.static(path.join(__dirname, '../h5p-library')));
@@ -39,7 +41,9 @@ app.post('/', async (req, res) => {
 });
 
 app.get('/play/:contentId', (req, res) => {
-  res.render('play', { title: 'Play!', contentId: req.params.contentId });
+  const contentId = req.params.contentId;
+  const integration = h5pHelper.createIntegration(contentId);
+  res.render('play', { title: 'Play!', contentId: contentId, integration: integration });
 });
 
 app.listen(3000, err => {
