@@ -14,9 +14,23 @@
   </div>
   <% } %>
   <% if (contentId) { %>
+  <hr>
   <div>
     Play with it <a href="/play/<%- contentId %>">here</a>!
   </div>
   <% } %>
+  <% if (availableIds && availableIds.length) { %>
+  <hr>
+  <div>
+    <select id="theSelect">
+      <% availableIds.forEach(id => { %>
+      <option value="<%- id %>"><%- id %></option>
+      <% }) %>
+    </select>
+    <button id="playSelectedVideo">Play!</button>
+  </div>
+  <div id="playground"></div>
+  <% } %>
+  <script src="/static/index.js"></script>
 </body>
 </html>

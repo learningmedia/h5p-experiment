@@ -3,6 +3,7 @@ const path = require('path');
 const glob = require('glob');
 const shell = require('shelljs');
 const shortid = require('shortid');
+const toposort = require('toposort');
 
 const rootDir = path.join(__dirname, '..');
 const libraryDir = path.join(__dirname, '../h5p/libraries');
@@ -44,16 +45,46 @@ function createDependencies(contentId) {
   const manifestPath = path.join(contentDir, `./${contentId}/h5p.json`);
   const manifest = loadJson(manifestPath);
   const preloadedLibs = (manifest.preloadedDependencies || []).map(dep => `${dep.machineName}-${dep.majorVersion}.${dep.minorVersion}`);
+
+  const libMap = new Map();
+  preloadedLibs.forEach(lib => addLibraryToMap(lib, libMap));
+
+  const nodes = Array.from(libMap.keys());
+  const edges = [];
+  libMap.forEach((value, key) => {
+    value.preloadedDependencies.forEach(dep => {
+      edges.push([dep, key]);
+    });
+  });
+
+  const orderedLibNames = toposort.array(nodes, edges);
+
   const preloadedJs = [];
   const preloadedCss = [];
-  preloadedLibs.forEach(lib => {
-    const libFileName = path.join(libraryDir, `./${lib}/library.json`);
-    const libFile = loadJson(libFileName);
-    preloadedJs.push(...(libFile.preloadedJs || []).map(dep => path.relative(rootDir, path.join(libraryDir, lib, dep.path))));
-    preloadedCss.push(...(libFile.preloadedCss || []).map(dep => path.relative(rootDir, path.join(libraryDir, lib, dep.path))));
+  orderedLibNames.map(libName => libMap.get(libName)).forEach(lib => {
+    preloadedJs.push(...lib.preloadedJs);
+    preloadedCss.push(...lib.preloadedCss);
   });
+
   const depsFileName = path.join(contentDir, `./${contentId}/deps.json`);
   writeJson(depsFileName, { preloadedJs, preloadedCss });
+}
+
+function addLibraryToMap(libName, map) {
+  if (map.has(libName)) return;
+
+  const libFileName = path.join(libraryDir, `./${libName}/library.json`);
+  const libFile = loadJson(libFileName);
+  const preloadedJs = [];
+  const preloadedCss = [];
+  const preloadedDependencies = [];
+
+  preloadedJs.push(...(libFile.preloadedJs || []).map(dep => path.relative(rootDir, path.join(libraryDir, libName, dep.path))));
+  preloadedCss.push(...(libFile.preloadedCss || []).map(dep => path.relative(rootDir, path.join(libraryDir, libName, dep.path))));
+  preloadedDependencies.push(...(libFile.preloadedDependencies || []).map(dep => `${dep.machineName}-${dep.majorVersion}.${dep.minorVersion}`));
+  map.set(libName, { preloadedJs, preloadedCss, preloadedDependencies });
+
+  preloadedDependencies.forEach(dep => addLibraryToMap(dep, map));
 }
 
 function loadJson(fileName) {
@@ -64,6 +95,14 @@ function writeJson(fileName, content) {
   fs.writeFileSync(fileName, JSON.stringify(content), 'utf8');
 }
 
+
+function getAvailableIds() {
+  return glob.sync(`${contentDir}/*/h5p.json`).map(f => {
+    const manifestPath = path.dirname(f);
+    const parentDirName = path.basename(manifestPath);
+    return parentDirName;
+  });
+}
 
 
 function createIntegration(contentId) {
@@ -76,36 +115,36 @@ function createIntegration(contentId) {
     postUserStatistics: false,
     siteUrl: 'http://localhost:3000/', // Only if NOT logged in!
     l10n: { // Text string translations
-      H5P: {
-        fullscreen: 'Fullscreen',
-        disableFullscreen: 'Disable fullscreen',
-        download: 'Download',
-        copyrights: 'Rights of use',
-        embed: 'Embed',
-        size: 'Size',
-        showAdvanced: 'Show advanced',
-        hideAdvanced: 'Hide advanced',
-        advancedHelp: 'Include this script on your website if you want dynamic sizing of the embedded content:',
-        copyrightInformation: 'Rights of use',
-        close: 'Close',
-        title: 'Title',
-        author: 'Author',
-        year: 'Year',
-        source: 'Source',
-        license: 'License',
-        thumbnail: 'Thumbnail',
-        noCopyrights: 'No copyright information available for this content.',
-        downloadDescription: 'Download this content as a H5P file.',
-        copyrightsDescription: 'View copyright information for this content.',
-        embedDescription: 'View the embed code for this content.',
-        h5pDescription: 'Visit H5P.org to check out more cool content.',
-        contentChanged: 'This content has changed since you last used it.',
-        startingOver: 'You\'ll be starting over.',
-        by: 'by',
-        showMore: 'Show more',
-        showLess: 'Show less',
-        subLevel: 'Sublevel'
-      }
+      // H5P: {
+      //   fullscreen: 'Fullscreen',
+      //   disableFullscreen: 'Disable fullscreen',
+      //   download: 'Download',
+      //   copyrights: 'Rights of use',
+      //   embed: 'Embed',
+      //   size: 'Size',
+      //   showAdvanced: 'Show advanced',
+      //   hideAdvanced: 'Hide advanced',
+      //   advancedHelp: 'Include this script on your website if you want dynamic sizing of the embedded content:',
+      //   copyrightInformation: 'Rights of use',
+      //   close: 'Close',
+      //   title: 'Title',
+      //   author: 'Author',
+      //   year: 'Year',
+      //   source: 'Source',
+      //   license: 'License',
+      //   thumbnail: 'Thumbnail',
+      //   noCopyrights: 'No copyright information available for this content.',
+      //   downloadDescription: 'Download this content as a H5P file.',
+      //   copyrightsDescription: 'View copyright information for this content.',
+      //   embedDescription: 'View the embed code for this content.',
+      //   h5pDescription: 'Visit H5P.org to check out more cool content.',
+      //   contentChanged: 'This content has changed since you last used it.',
+      //   startingOver: 'You\'ll be starting over.',
+      //   by: 'by',
+      //   showMore: 'Show more',
+      //   showLess: 'Show less',
+      //   subLevel: 'Sublevel'
+      // }
     },
     loadedJs: [], // Only required when Embed Type = div
     loadedCss: [],
@@ -131,19 +170,16 @@ function createIntegration(contentId) {
         library: getMainLibraryForContent(manifest),
         jsonContent: JSON.stringify(content),
         fullScreen: false, // No fullscreen support
-        exportUrl: "/path/to/download.h5p",
-        embedCode: "<iframe src=\"https://mysite.com/h5p/1234/embed\" width=\":w\" height=\":h\" frameborder=\"0\" allowfullscreen=\"allowfullscreen\"></iframe>",
-        resizeCode: "<script src=\"https://mysite.com/h5p-resizer.js\" charset=\"UTF-8\"></script>",
         mainId: contentId,
         url: `http://localhost:3000/h5p/content/${contentId}`,
-        title: "How long is a rope?",
+        title: manifest.title,
         contentUserData: null,
         displayOptions: {
-          frame: true, // Show frame and buttons below H5P
-          export: true, // Display download button
-          embed: true, // Display embed button
+          frame: false, // Show frame and buttons below H5P
+          export: false, // Display download button
+          embed: false, // Display embed button
           copyright: true, // Display copyright button
-          icon: true // Display H5P icon
+          icon: false // Display H5P icon
         },
         styles: deps.preloadedCss.map(p => `/${p}`),
         scripts: deps.preloadedJs.map(p => `/${p}`)
@@ -175,5 +211,6 @@ function loadContent(contentId) {
 
 module.exports = {
   install,
+  getAvailableIds,
   createIntegration
 };

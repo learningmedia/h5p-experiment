@@ -14,15 +14,18 @@ app.locals.htmlescape = htmlescape;
 
 app.use('/h5p', express.static(path.join(__dirname, '../h5p')));
 app.use('/h5p-library', express.static(path.join(__dirname, '../h5p-library')));
+app.use('/static', express.static(path.join(__dirname, '../static')));
 
 app.use(fileUpload());
 
 app.get('/', (req, res) => {
-  res.render('index', { title: 'The index page!', message: undefined, contentId: undefined });
+  const availableIds = h5pHelper.getAvailableIds();
+  res.render('index', { title: 'The index page!', message: undefined, contentId: undefined, availableIds: availableIds });
 });
 
 app.post('/', async (req, res) => {
-  if (!req.files) return res.render('index', { title: 'The index page!', message: 'Upload failed, no file!', contentId: undefined });
+  const availableIds = h5pHelper.getAvailableIds();
+  if (!req.files) return res.render('index', { title: 'The index page!', message: 'Upload failed, no file!', contentId: undefined, availableIds: availableIds });
 
   const tempDir = path.join(__dirname, `../temp/${Date.now()}/`);
   const unzipDir = path.join(tempDir, './decompressed/');
@@ -33,9 +36,9 @@ app.post('/', async (req, res) => {
     await req.files.h5p.mv(tempFileName);
     await decompress(tempFileName, unzipDir);
     const output = await h5pHelper.install(unzipDir);
-    res.render('index', { title: 'The index page!', message: 'Installation successful!', contentId: output.contentId });
+    res.render('index', { title: 'The index page!', message: 'Installation successful!', contentId: output.contentId, availableIds: availableIds });
   } catch (err) {
-    res.render('index', { title: 'The index page!', message: err.toString(), contentId: undefined });
+    res.render('index', { title: 'The index page!', message: err.toString(), contentId: undefined, availableIds: availableIds });
   }
 
 });
