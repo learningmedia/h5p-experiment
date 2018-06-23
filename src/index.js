@@ -17,18 +17,17 @@ app.use('/static', express.static(path.join(__dirname, '../static')));
 
 app.use(fileUpload());
 
-app.get('/', (req, res) => {
-  const availableIds = h5pHelper.getAvailableIds();
+app.get('/', async (req, res) => {
+  const availableIds = await h5pHelper.getAvailableIds();
   res.render('index', { title: 'The index page!', message: undefined, contentId: undefined, availableIds: availableIds });
 });
 
 app.post('/', async (req, res) => {
-  const availableIds = h5pHelper.getAvailableIds();
+  const availableIds = await h5pHelper.getAvailableIds();
   if (!req.files) return res.render('index', { title: 'The index page!', message: 'Upload failed, no file!', contentId: undefined, availableIds: availableIds });
 
-  const tempFileName = path.join(os.tmpdir(), './h5p-${Date.now()}');
-
   try {
+    const tempFileName = path.join(os.tmpdir(), `./h5p-${Date.now()}`);
     await req.files.h5p.mv(tempFileName);
     const output = await h5pHelper.install(tempFileName);
     res.render('index', { title: 'The index page!', message: 'Installation successful!', contentId: output.contentId, availableIds: availableIds });
@@ -39,9 +38,9 @@ app.post('/', async (req, res) => {
 
 });
 
-app.get('/play/:contentId', (req, res) => {
+app.get('/play/:contentId', async (req, res) => {
   const contentId = req.params.contentId;
-  const integration = h5pHelper.createIntegration(contentId);
+  const integration = await h5pHelper.createIntegration(contentId);
   res.render('play', { title: 'Play!', contentId: contentId, integration: integration });
 });
 
