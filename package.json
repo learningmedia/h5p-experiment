@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "clean": "rimraf ./temp/** && rimraf ./h5p/** && mkdirp ./temp && mkdirp ./h5p/content && mkdirp ./h5p/libraries",
+    "clean": "rimraf ./temp/** && rimraf ./h5p/** && mkdirp ./temp && mkdirp ./h5p",
     "start": "nodemon -x \"node ./src/index.js\" --ignore \"temp/**\" --ignore \"h5p/**\""
   },
   "dependencies": {

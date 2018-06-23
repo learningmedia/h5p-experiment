@@ -1,8 +1,7 @@
-const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const express = require('express');
 const htmlescape = require('htmlescape');
-const decompress = require('decompress');
 const h5pHelper = require('./h5p-helper');
 const fileUpload = require('express-fileupload');
 
@@ -27,17 +26,14 @@ app.post('/', async (req, res) => {
   const availableIds = h5pHelper.getAvailableIds();
   if (!req.files) return res.render('index', { title: 'The index page!', message: 'Upload failed, no file!', contentId: undefined, availableIds: availableIds });
 
-  const tempDir = path.join(__dirname, `../temp/${Date.now()}/`);
-  const unzipDir = path.join(tempDir, './decompressed/');
-  const tempFileName = path.join(tempDir, './input.h5p');
-  fs.mkdirSync(tempDir);
+  const tempFileName = path.join(os.tmpdir(), './h5p-${Date.now()}');
 
   try {
     await req.files.h5p.mv(tempFileName);
-    await decompress(tempFileName, unzipDir);
-    const output = await h5pHelper.install(unzipDir);
+    const output = await h5pHelper.install(tempFileName);
     res.render('index', { title: 'The index page!', message: 'Installation successful!', contentId: output.contentId, availableIds: availableIds });
   } catch (err) {
+    console.error(err);
     res.render('index', { title: 'The index page!', message: err.toString(), contentId: undefined, availableIds: availableIds });
   }
 
